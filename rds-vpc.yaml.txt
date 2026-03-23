@@ -1,0 +1,134 @@
+# Description of what this change includes
+# Revision number
+# Date
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS CloudFormation template for a High-Availability VPC in us-west-2 spanning 3 AZs for Student tafphi0739.'
+
+# ----------------------------------------------------------------              
+# Parameters: Configured with your unique ECPI Student ID.
+# ----------------------------------------------------------------
+Parameters:
+  StudentID:
+    Type: String
+    Description: "Your unique ECPI Student ID."
+    Default: "tafphi0739"
+
+Resources:
+  # ----------------------------------------------------------------
+  # VPC Configuration: Foundational network in us-west-2.
+  # ----------------------------------------------------------------
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          # Result: VPC-tafphi0739
+          Value: !Sub "VPC-${StudentID}"
+
+  # ----------------------------------------------------------------
+  # Subnets: 3 Public Subnets across us-west-2a, 2b, and 2c.
+  # ----------------------------------------------------------------
+  PublicSubnetAZ1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      AvailabilityZone: us-west-2a
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "Subnet-AZ1-${StudentID}"
+
+  PublicSubnetAZ2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      AvailabilityZone: us-west-2b
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "Subnet-AZ2-${StudentID}"
+
+  PublicSubnetAZ3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      AvailabilityZone: us-west-2c
+      CidrBlock: 10.0.3.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "Subnet-AZ3-${StudentID}"
+
+  # ----------------------------------------------------------------
+  # Gateway and Routing: Enabling public internet access.
+  # ----------------------------------------------------------------
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "IGW-${StudentID}"
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "PublicRouteTable-${StudentID}"
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  # ----------------------------------------------------------------
+  # Associations: Linking the 3 Subnets to the Route Table.
+  # ----------------------------------------------------------------
+  Subnet1Association:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetAZ1
+
+  Subnet2Association:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetAZ2
+
+  Subnet3Association:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetAZ3
+  RdsInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      VPCSecurityGroups:
+      - <SECURITY-GROUP-ID>
+      AllocatedStorage: '5'
+      DBInstanceClass: db.t3.micro
+      DBInstanceIdentifier: playground-db
+      Engine: MySQL
+      MasterUsername: Admin
+      MasterUserPassword: CloudAcademy123!
+
+Outputs:
+  VPCId:
+    Description: "The ID of the VPC-tafphi0739."
+    Value: !Ref MyVPC
